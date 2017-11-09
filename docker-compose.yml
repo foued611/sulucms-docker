@@ -1,0 +1,114 @@
+version: '2'
+services:
+  nginx:
+    container_name: sulucms_nginx
+    build:
+      context: docker/nginx
+    ports:
+      - "8080:80"
+      - "443:443"
+    expose:
+      - "9000"
+      - "80"
+      - "443"
+    links:
+      - php-fpm
+      - elasticsearch
+    volumes_from:
+      - php-fpm
+    volumes:
+      - ./logs/nginx/:/var/log/nginx
+    networks:
+      mynet:
+        aliases:
+          - nginxserver
+        ipv4_address: 172.3.0.101
+    environment:
+      SYMFONY_ENV: dev
+      SYMFONY_DEBUG: 1
+  php-fpm:
+    container_name: sulucms_php-fpm
+    build:
+      context: docker/php-fpm
+    expose:
+      - "9000"
+    volumes:
+      - sulu-data-sync:/var/www:nocopy
+    user: "1000:1000"
+    environment:
+      SYMFONY_ENV: dev
+      SYMFONY_DEBUG: 1
+      USER: www-data
+      GROUP: www-data
+      PHP_XDEBUG_ENABLED: 1 # Set 1 to enable.
+      XDEBUG_CONFIG: "remote_host=10.11.11.111" # set your Host ip adresse
+    networks:
+      mynet:
+        aliases:
+          - phpfpmserver
+        ipv4_address: 172.3.0.102
+  mysql:
+    container_name: sulucms_mysql
+    build:
+      context: docker/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: symfony
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    networks:
+      mynet:
+        aliases:
+          - mysql
+        ipv4_address: 172.3.0.103
+  redis:
+    container_name: sulucms_redis
+    build:
+      context: docker/redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis/:/data
+    networks:
+      mynet:
+        aliases:
+          - redisserver
+        ipv4_address: 172.3.0.104
+  elasticsearch:
+      container_name: sulucms_elasticsearch
+      build: docker/elasticsearch/
+      volumes:
+          - ./data/elasticsearch:/usr/share/elasticsearch/data
+          - ./docker/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+          - ./data/elasticsearch-backup:/usr/share/elasticsearch/backup
+      ports:
+        - "9200:9200"
+      expose:
+        - "9200"
+      networks:
+        mynet:
+          aliases:
+            - elasticserver
+          ipv4_address: 172.3.0.105
+#  rabbitmq:
+#    container_name: sulucms_rabbitmq
+#    build:
+#      context: docker/rabbitmq
+#    ports:
+#      - "5672:5672"
+#      - "15672:15672"
+#    #volumes:
+#    #  - ./data/rabbitmq/:/var/lib/rabbitmq
+
+volumes:
+  sulu-data-sync:
+    external: true
+
+networks:
+  mynet:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 172.3.0.0/24

@@ -1,0 +1,10 @@
+version: "2"
+syncs:
+# this name has to be unique and is used in docker-compose.yml as well
+  sulu-data-sync:
+    src: './' # the directory on the host system
+    sync_strategy: 'unison'
+    sync_prefer: 'default'
+    sync_userid: '1000'
+
+
